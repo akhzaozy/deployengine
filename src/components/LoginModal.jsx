@@ -400,19 +400,6 @@ export function LoginModal({ onLoginSuccess, theme, onToggleTheme }) {
             <ArrowRight size={14} />
           </button>
 
-          {!isRegister && (
-            <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={quickDemoLogin}
-                className="btn btn-secondary"
-                style={{ width: '100%', fontSize: 11.5, padding: '7px 10px' }}
-              >
-                Gunakan Akun Demo (username: <code>developer</code>)
-              </button>
-            </div>
-          )}
-
           <div style={{ textAlign: 'center', marginTop: 16 }}>
             <button
               type="button"
