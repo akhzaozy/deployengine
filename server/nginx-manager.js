@@ -84,6 +84,24 @@ export class NginxManager {
     const enabledPath = path.join(CONFIG.nginxEnabled, `${repo}.conf`);
 
     const logs = [];
+
+    // Cek jika konfigurasi sudah ada dan identik
+    let isIdentical = false;
+    try {
+      if (fs.existsSync(availPath) && fs.existsSync(enabledPath)) {
+        const existingContent = fs.readFileSync(availPath, 'utf8');
+        if (existingContent === vhostContent) {
+          isIdentical = true;
+        }
+      }
+    } catch {}
+
+    if (isIdentical) {
+      logs.push(`[Nginx] Konfigurasi virtual host untuk '${repo}' sudah ada dan identik.`);
+      logs.push(`[Nginx] Melewati reload daemon untuk menjaga koneksi tetap stabil.`);
+      return { success: true, availPath, enabledPath, logs, alreadyConfigured: true };
+    }
+
     logs.push(`[Nginx] Menulis konfigurasi virtual host: ${availPath}`);
 
     try {
