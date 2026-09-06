@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -9,14 +10,14 @@ export const CONFIG = {
   port: process.env.PORT || 4000,
   apiKey: process.env.DEPLOY_API_KEY || 'RAHASIA123',
   domainBase: process.env.DOMAIN_BASE || 'akhzafachrozy.my.id',
-  
+
   // Paths
   baseDir: isProduction ? '/www/wwwroot/hosting' : path.resolve(os.homedir(), '.autodeploy/projects'),
   logDir: isProduction ? '/var/log/autodeploy' : path.resolve(os.homedir(), '.autodeploy/logs'),
   metaDir: isProduction ? '/var/lib/autodeploy' : path.resolve(os.homedir(), '.autodeploy/metadata'),
   nginxAvail: isProduction ? '/etc/nginx/sites-available' : path.resolve(os.homedir(), '.autodeploy/nginx/sites-available'),
   nginxEnabled: isProduction ? '/etc/nginx/sites-enabled' : path.resolve(os.homedir(), '.autodeploy/nginx/sites-enabled'),
-  
+
   // Binaries
   php: process.env.PHP_BIN || (isProduction ? '/www/server/php/83/bin/php' : 'php'),
   composer: process.env.COMPOSER_BIN || (isProduction ? '/usr/local/bin/composer' : 'composer'),
@@ -25,11 +26,11 @@ export const CONFIG = {
   npmBin: process.env.NPM_BIN || 'npm',
   pm2Bin: process.env.PM2_BIN || 'pm2',
 
-  // Cloudflare API Defaults (set via environment variable on server)
+  // Cloudflare API Defaults (loaded via .env or server environment)
   cfApiToken: process.env.CF_API_TOKEN || '',
-  cfZoneId: process.env.CF_ZONE_ID || '',
-  cfAccount: process.env.CF_ACCOUNT || '',
-  cfTunnelId: process.env.CF_TUNNEL_ID || '',
+  cfZoneId: process.env.CF_ZONE_ID || '712ada9fce4f123c176028ff2b2fc60c',
+  cfAccount: process.env.CF_ACCOUNT || '036e4ee85ad3043de7bbefa1ce4436a7',
+  cfTunnelId: process.env.CF_TUNNEL_ID || 'ecf06af5-bfae-4ab8-b462-976513204516',
 
   // Database Default Credentials
   db: {

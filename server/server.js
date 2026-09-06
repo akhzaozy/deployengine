@@ -450,9 +450,23 @@ app.post('/api/webhook/test-trigger', async (req, res) => {
   res.json({ success: true, result });
 });
 
+// Serve built frontend assets if dist folder exists
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distDir = path.resolve(__dirname, '../dist');
+
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
+
 // Start Server
 const PORT = CONFIG.port;
-app.listen(PORT, () => {
-  console.log(`[AutoDeploy Server] Running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[AutoDeploy Server] Running on http://0.0.0.0:${PORT}`);
   console.log(`[AutoDeploy Server] Mode: ${CONFIG.isProduction ? 'Linux Production' : 'Development/Mock'}`);
 });
