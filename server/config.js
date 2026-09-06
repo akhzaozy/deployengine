@@ -18,10 +18,10 @@ export const CONFIG = {
   nginxAvail: isProduction ? '/etc/nginx/sites-available' : path.resolve(os.homedir(), '.autodeploy/nginx/sites-available'),
   nginxEnabled: isProduction ? '/etc/nginx/sites-enabled' : path.resolve(os.homedir(), '.autodeploy/nginx/sites-enabled'),
 
-  // Binaries
-  php: process.env.PHP_BIN || (isProduction ? '/www/server/php/83/bin/php' : 'php'),
-  composer: process.env.COMPOSER_BIN || (isProduction ? '/usr/local/bin/composer' : 'composer'),
-  phpFpmSocket: process.env.PHP_FPM_SOCKET || (isProduction ? '/tmp/php-cgi-83.sock' : '/tmp/php-fpm.sock'),
+  // Binaries (Locked to PHP 8.4)
+  php: process.env.PHP_BIN || (fs.existsSync('/www/server/php/84/bin/php') ? '/www/server/php/84/bin/php' : (isProduction ? '/www/server/php/84/bin/php' : 'php')),
+  composer: process.env.COMPOSER_BIN || (fs.existsSync('/usr/local/bin/composer') ? '/usr/local/bin/composer' : 'composer'),
+  phpFpmSocket: process.env.PHP_FPM_SOCKET || (isProduction ? '/tmp/php-cgi-84.sock' : '/tmp/php-fpm.sock'),
   nodeBin: process.env.NODE_BIN || 'node',
   npmBin: process.env.NPM_BIN || 'npm',
   pm2Bin: process.env.PM2_BIN || 'pm2',

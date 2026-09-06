@@ -7,9 +7,11 @@ Multi-Framework CI/CD & AutoDeploy Web Platform supporting **Laravel**, **Next.j
 ## 🚀 Fitur Utama
 
 ### 1. Multi-Framework AutoDeploy & AutoBuild
-- **Laravel**: `composer install`, `php artisan key:generate`, `php artisan migrate --force`, `php artisan storage:link`, cache clearing, Nginx FastCGI pass ke socket PHP-FPM (`/tmp/php-cgi-83.sock`).
+- **Universal Input**: Cukup masukkan full HTTPS URL (`https://github.com/user/repo.git`), SSH (`git@github.com:user/repo.git`), ataupun format singkat `user/repo`. Sistem otomatis memparsing slug repo, menginisialisasi origin, dan mendeteksi default branch (`main`/`master`).
+- **Laravel**: Runtime locked ke PHP 8.4 (`/www/server/php/84/bin/php`), Composer dengan `COMPOSER_ALLOW_SUPERUSER=1`, auto-copy `.env.example`, generator `APP_KEY` hanya jika kosong, `php artisan storage:link --force`, `php artisan migrate --force` (graceful error handling), pembersihan cache terpadu (`php artisan optimize:clear`), serta Nginx FastCGI pass ke socket PHP-FPM (`/tmp/php-cgi-84.sock`).
 - **Next.js**: deteksi package manager (`npm`/`pnpm`/`yarn`), dependency install, `next build`, runner process daemon / PM2 pada port teralokasi, Nginx reverse-proxy dengan WebSocket headers.
-- **PHP Native**: Docroot synchronization, PHP-FPM fastcgi pass.
+- **PHP Native**: Docroot synchronization, PHP-FPM FastCGI pass (PHP 8.4).
+- **File Permissions**: Hak akses otomatis Linux/aaPanel (`chown -R www:www`, directory `755`, file `644`, serta storage & cache `775`).
 
 ### 2. GitHub Webhook Integration (Autobuild on Git Push)
 - Endpoint: `POST /api/webhook/github`
@@ -62,3 +64,20 @@ npm run dev
 ```
 
 Dashboard dapat diakses di: **http://localhost:5173** (atau port server produksi Anda).
+
+---
+
+## ⚡ Eksekusi CLI Mandiri (deploy.sh)
+
+Anda juga dapat mengeksekusi deployment universal langsung dari terminal server:
+
+```bash
+# Menggunakan full URL HTTPS
+bash deploy.sh https://github.com/username/repository.git
+
+# Menggunakan format singkat (username/repo)
+bash deploy.sh username/repository
+
+# Menentukan target branch secara spesifik
+bash deploy.sh username/repository main
+```

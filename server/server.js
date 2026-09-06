@@ -223,11 +223,19 @@ app.post('/api/projects', (req, res) => {
   }
 
   const { repo, framework, branch, gitUrl, webhookSecret, dbEngine, port } = req.body;
-  if (!repo) {
-    return res.status(400).json({ error: 'Nama repo wajib diisi' });
+  if (!repo && !gitUrl) {
+    return res.status(400).json({ error: 'Nama repo atau URL GitHub wajib diisi' });
   }
 
-  const cleanRepo = repo.toLowerCase().replace(/[^a-z0-9-]/g, '');
+  // Parse input fleksibel (URL HTTPS, SSH, format username/repo, atau slug)
+  const parsed = DeployRunner.normalizeGitInput(repo || gitUrl);
+  const cleanRepo = parsed.repo;
+  const resolvedGitUrl = gitUrl ? (DeployRunner.normalizeGitInput(gitUrl).gitUrl || gitUrl) : parsed.gitUrl;
+
+  if (!cleanRepo) {
+    return res.status(400).json({ error: 'Nama repositori tidak valid' });
+  }
+
   const existingIdx = projects.findIndex(p => p.repo === cleanRepo && p.ownerId === user.id);
 
   const projectData = {
@@ -236,7 +244,7 @@ app.post('/api/projects', (req, res) => {
     repo: cleanRepo,
     framework: framework || 'laravel',
     branch: branch || 'main',
-    gitUrl: gitUrl || '',
+    gitUrl: resolvedGitUrl || '',
     webhookSecret: webhookSecret || 'secret_' + Math.random().toString(36).slice(2, 10),
     dbEngine: dbEngine || 'mariadb',
     dbName: cleanRepo.replace(/-/g, '_'),
