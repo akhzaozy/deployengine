@@ -69,7 +69,12 @@ export class DeployRunner {
         const proc = exec(cmd, { 
           cwd, 
           maxBuffer: 10 * 1024 * 1024,
-          env: { ...process.env, COMPOSER_ALLOW_SUPERUSER: '1' }
+          env: { 
+            ...process.env, 
+            COMPOSER_ALLOW_SUPERUSER: '1',
+            GIT_TERMINAL_PROMPT: '0',
+            GIT_SSH_COMMAND: 'ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes'
+          }
         });
 
         proc.stdout?.on('data', (data) => {
@@ -149,7 +154,10 @@ export class DeployRunner {
     let targetBranch = branch || 'main';
     if (gitUrl) {
       try {
-        const lsCheck = execSync(`git ls-remote --symref "${gitUrl}" HEAD 2>/dev/null`, { timeout: 8000 }).toString();
+        const lsCheck = execSync(`git ls-remote --symref "${gitUrl}" HEAD 2>/dev/null`, { 
+          timeout: 5000, 
+          env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } 
+        }).toString();
         const branchMatch = lsCheck.match(/ref:\s+refs\/heads\/([^\s]+)\s+HEAD/);
         if (branchMatch && branchMatch[1]) {
           targetBranch = branchMatch[1];
