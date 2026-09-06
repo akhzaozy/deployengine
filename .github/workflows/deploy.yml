@@ -1,0 +1,50 @@
+name: AutoDeploy Cloud Engine CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Server via AutoDeploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger AutoDeploy Engine
+        env:
+          AUTODEPLOY_HOST: "https://deployengine.akhzafachrozy.my.id"
+          AUTODEPLOY_KEY: ${{ secrets.AUTODEPLOY_API_KEY || 'RAHASIA123' }}
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          COMMIT_MSG="${{ github.event.head_commit.message || 'Manual trigger via GitHub Actions' }}"
+          AUTHOR="${{ github.actor }}"
+          BRANCH="${{ github.ref_name }}"
+
+          echo "🚀 Memicu deployment untuk project: ${REPO_NAME} (Branch: ${BRANCH})..."
+          echo "Commit: ${COMMIT_MSG}"
+          echo "Triggered by: @${AUTHOR}"
+
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            "${AUTODEPLOY_HOST}/api/projects/${REPO_NAME}/deploy?wait=true" \
+            -H "Content-Type: application/json" \
+            -H "X-API-KEY: ${AUTODEPLOY_KEY}" \
+            -d "{\"triggerBy\": \"GitHub Actions (@${AUTHOR})\", \"commitMsg\": \"${COMMIT_MSG}\", \"branch\": \"${BRANCH}\"}")
+
+          HTTP_BODY=$(echo "$RESPONSE" | sed -e '$d')
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1 | cut -d':' -f2)
+
+          echo ""
+          echo "Response Status: ${HTTP_STATUS}"
+          echo "Response Body:"
+          echo "${HTTP_BODY}"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Deployment berhasil diselesaikan oleh AutoDeploy Engine!"
+          else
+            echo "❌ Deployment gagal dengan HTTP Status: ${HTTP_STATUS}"
+            exit 1
+          fi

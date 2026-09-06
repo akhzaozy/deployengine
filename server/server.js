@@ -276,7 +276,7 @@ app.delete('/api/projects/:repo', (req, res) => {
   res.json({ success: true, message: `Project ${repo} dihapus.` });
 });
 
-// Manual Deploy Trigger (passes into Queue Mutex with ETA calculation)
+// Manual / GitHub Actions Deploy Trigger (passes into Queue Mutex with ETA calculation)
 app.post('/api/projects/:repo/deploy', async (req, res) => {
   const { repo } = req.params;
   const project = projects.find(p => p.repo === repo);
@@ -284,14 +284,24 @@ app.post('/api/projects/:repo/deploy', async (req, res) => {
     return res.status(404).json({ error: 'Project tidak ditemukan' });
   }
 
-  // Extract authenticated user
+  // Extract authenticated user or API Key from GitHub Actions
   const authHeader = req.headers.authorization || '';
+  const apiKeyHeader = req.headers['x-api-key'] || req.headers['x-deploy-key'] || '';
   const token = authHeader.replace('Bearer ', '').trim();
   const user = AuthManager.verifyToken(token);
+  const isApiKeyValid = (token && token === CONFIG.apiKey) || (apiKeyHeader && apiKeyHeader === CONFIG.apiKey);
 
-  const defaultTrigger = user ? `@${user.username} (${user.fullName})` : 'Web Dashboard';
+  if (authHeader && !user && !isApiKeyValid) {
+    return res.status(401).json({ error: 'Autentikasi gagal. Sesi tidak valid atau API Key salah.' });
+  }
+
+  const defaultTrigger = isApiKeyValid
+    ? 'GitHub Actions CI/CD'
+    : (user ? `@${user.username} (${user.fullName})` : 'Web Dashboard');
+
   const triggerBy = req.body.triggerBy || defaultTrigger;
-  const commitMsg = req.body.commitMsg || `Manual deployment triggered by ${triggerBy}`;
+  const commitMsg = req.body.commitMsg || `Deployment triggered by ${triggerBy}`;
+  const shouldWait = req.query.wait === 'true' || req.body.wait === true;
 
   // Queue the build with deployer user details
   const queuePromise = globalQueue.enqueue({
@@ -299,9 +309,9 @@ app.post('/api/projects/:repo/deploy', async (req, res) => {
     framework: project.framework,
     triggerBy,
     userId: user?.id || null,
-    username: user?.username || 'anonymous',
+    username: isApiKeyValid ? 'github-actions' : (user?.username || 'anonymous'),
     commit: commitMsg,
-    branch: project.branch
+    branch: req.body.branch || project.branch
   }, async (context) => {
     project.status = 'building';
     saveProjects();
@@ -319,6 +329,22 @@ app.post('/api/projects/:repo/deploy', async (req, res) => {
       throw err;
     }
   });
+
+  if (shouldWait) {
+    try {
+      const result = await queuePromise;
+      return res.json({
+        success: true,
+        message: `Deployment project '${repo}' berhasil diselesaikan.`,
+        result
+      });
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: err.message
+      });
+    }
+  }
 
   const status = globalQueue.getStatus();
   res.json({
