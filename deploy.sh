@@ -240,9 +240,9 @@ if [ -f "artisan" ] || [ -f "composer.json" ]; then
   log_success "Dependensi Composer berhasil diinstal."
 fi
 
-# Next.js / Node.js
-if [ -f "package.json" ] && [ ! -f "artisan" ]; then
-  log_info "Mendeteksi project Node.js / Next.js. Menginstal node modules..."
+# Node.js / Frontend Dependencies (React / Vue / Vite / Next.js)
+if [ -f "package.json" ]; then
+  log_info "Mendeteksi package.json. Menginstal dependensi npm..."
   npm install --prefer-offline || npm install
   log_success "Dependensi npm berhasil diinstal."
 fi
@@ -281,6 +281,16 @@ if [ -f "artisan" ]; then
   log_info "Membersihkan seluruh cache aplikasi (php artisan optimize:clear)..."
   "$PHP_BIN" artisan optimize:clear
   log_success "Cache Laravel berhasil dibersihkan."
+
+  # 5. Kompilasi asset frontend (Laravel + React / Vue / Vite / Inertia)
+  if [ -f "package.json" ] && grep -q '"build"' package.json 2>/dev/null; then
+    log_info "Mendeteksi skrip 'build' di package.json. Mengompilasi asset frontend (npm run build)..."
+    if npm run build; then
+      log_success "Asset frontend (React/Vite) berhasil dikompilasi ke public/build."
+    else
+      log_warn "'npm run build' menghasilkan catatan/peringatan. Melanjutkan proses deployment..."
+    fi
+  fi
 elif [ -f "package.json" ] && [ -f "next.config.js" -o -f "next.config.mjs" -o -f "next.config.ts" ]; then
   log_info "Menjalankan Next.js build..."
   npm run build

@@ -308,12 +308,22 @@ export class DeployRunner {
         throw new Error(`File 'vendor/autoload.php' tidak ditemukan setelah eksekusi composer! Instalasi dependensi gagal.`);
       }
       log(`[COMPOSER SUCCESS] Dependensi vendor Laravel berhasil terpasang.`);
+
+      // Jika Laravel menggunakan React/Vue/Inertia/Vite (memiliki package.json)
+      if (fs.existsSync(path.join(projectDir, 'package.json'))) {
+        log(`[NPM] Mendeteksi package.json pada project Laravel. Menginstal dependensi frontend (React/Vite)...`);
+        await this.execCommand(`${CONFIG.npmBin} install --prefer-offline || ${CONFIG.npmBin} install`, projectDir, log);
+      }
     } else if (effectiveFramework === 'nextjs') {
       log(`[NPM] Menginstal dependensi Node.js...`);
       await this.execCommand(`${CONFIG.npmBin} install --prefer-offline || ${CONFIG.npmBin} install`, projectDir, log);
     } else if (fs.existsSync(path.join(projectDir, 'composer.json'))) {
       log(`[COMPOSER] Mendeteksi composer.json pada PHP Native. Menjalankan instalasi...`);
       await this.execCommand(`export COMPOSER_ALLOW_SUPERUSER=1 && ${CONFIG.php} ${CONFIG.composer} install --no-dev --optimize-autoloader --no-interaction || true`, projectDir, log);
+      if (fs.existsSync(path.join(projectDir, 'package.json'))) {
+        log(`[NPM] Mendeteksi package.json pada PHP Native. Menginstal dependensi frontend...`);
+        await this.execCommand(`${CONFIG.npmBin} install --prefer-offline || ${CONFIG.npmBin} install`, projectDir, log);
+      }
     }
 
     // ================================================================
@@ -360,6 +370,25 @@ export class DeployRunner {
       // 4. Cache Clearing
       log(`[ARTISAN] Membersihkan application cache (optimize:clear)...`);
       await this.execCommand(`${CONFIG.php} artisan optimize:clear`, projectDir, log);
+
+      // 5. Kompilasi Frontend Asset (Laravel + React / Vue / Vite / Inertia)
+      const pkgJsonPath = path.join(projectDir, 'package.json');
+      if (fs.existsSync(pkgJsonPath)) {
+        try {
+          const pkgData = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+          if (pkgData.scripts && pkgData.scripts.build) {
+            log(`[FRONTEND BUILD] Mendeteksi skrip 'build'. Menjalankan 'npm run build' (Vite / React)...`);
+            const buildRes = await this.execCommand(`${CONFIG.npmBin} run build`, projectDir, log);
+            if (buildRes.success) {
+              log(`[FRONTEND BUILD SUCCESS] Asset React/Vite berhasil dikompilasi ke folder public/build.`);
+            } else {
+              log(`[FRONTEND BUILD WARN] 'npm run build' menghasilkan catatan/peringatan. Melanjutkan pipeline.`);
+            }
+          }
+        } catch (err) {
+          log(`[FRONTEND BUILD WARN] Gagal membaca package.json: ${err.message}`);
+        }
+      }
     } else if (effectiveFramework === 'nextjs') {
       log(`[NEXTJS] Menjalankan 'next build'...`);
       await this.execCommand(`${CONFIG.npmBin} run build`, projectDir, log);
