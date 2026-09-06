@@ -77,7 +77,20 @@ export class DeployRunner {
         });
 
         proc.stderr?.on('data', (data) => {
-          data.toString().split('\n').filter(Boolean).forEach(line => onLog(`✖ [stderr] ${line}`));
+          data.toString().split('\n').filter(Boolean).forEach(line => {
+            const trimmed = line.trim();
+            // Git & Composer progress/informational messages sent to stderr by design
+            const isInfo = /^(From | \* |Installing |Downloading |Generating |Package operations|Verifying |\d+\/\d+|Extracting |Nothing to |Use the |> |@php |[0-9]+ package)/i.test(trimmed);
+            const isActualError = /^(error|fatal|exception|failed|parse error)/i.test(trimmed);
+
+            if (isActualError) {
+              onLog(`✖ [stderr error] ${line}`);
+            } else if (isInfo) {
+              onLog(line);
+            } else {
+              onLog(line);
+            }
+          });
         });
 
         proc.on('close', (code) => {

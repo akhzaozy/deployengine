@@ -91,7 +91,7 @@ export class CloudflareManager {
 
       // Add our rule and catch-all
       ingress.push(
-        { hostname: sub, service: serviceTarget, originRequest: {} },
+        { hostname: sub, service: serviceTarget, originRequest: { httpHostHeader: sub } },
         { service: 'http_status:404', originRequest: {} }
       );
 

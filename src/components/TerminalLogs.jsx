@@ -211,8 +211,8 @@ export function TerminalLogs({ logs, activeRepo, onClear }) {
       );
     }
 
-    // 11. Errors: ERROR or [stderr] or failed
-    if (text.includes('ERROR') || text.includes('[stderr]') || text.includes('failed') || text.includes('Gagal')) {
+    // 11. Errors: ERROR or actual error text
+    if (text.includes('ERROR') || text.includes('[stderr error]') || text.includes('failed') || text.includes('Gagal')) {
       return (
         <div key={index} style={{
           color: '#f87171',
@@ -221,7 +221,7 @@ export function TerminalLogs({ logs, activeRepo, onClear }) {
           padding: '2px 8px',
           margin: '2px 0'
         }}>
-          ✖ {text}
+          {text.startsWith('✖') ? text : `✖ ${text}`}
         </div>
       );
     }
