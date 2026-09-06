@@ -33,27 +33,42 @@ export class CloudflareManager {
     const sub = `${repo}.${domainBase}`;
     const logs = [];
 
-    logs.push(`[Cloudflare] Memeriksa Tunnel ID: ${CONFIG.cfTunnelId}...`);
+    let targetTunnelId = CONFIG.cfTunnelId;
+    logs.push(`[Cloudflare] Memeriksa Tunnel ID: ${targetTunnelId}...`);
     
-    // Check Tunnel status
-    const tunnelUrl = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.cfAccount}/cfd_tunnel/${CONFIG.cfTunnelId}`;
-    const tunnelRes = await this.request('GET', tunnelUrl);
+    // 1. Validasi status tunnel target
+    const tunnelUrl = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.cfAccount}/cfd_tunnel/${targetTunnelId}`;
+    let tunnelRes = await this.request('GET', tunnelUrl);
+    let tunnel = tunnelRes.data?.result;
 
-    if (!tunnelRes.ok || !tunnelRes.data?.result?.id) {
-      logs.push(`[Cloudflare WARN] Tunnel ID tidak aktif atau API offline. Mode simulasi / direct Nginx aktif.`);
-      return { success: true, subdomain: sub, simulated: true, logs };
+    // Jika tunnel target tidak valid, dihapus, atau tidak berstatus healthy, cari tunnel aktif secara otomatis
+    if (!tunnelRes.ok || !tunnel?.id || tunnel.deleted_at || tunnel.status !== 'healthy') {
+      logs.push(`[Cloudflare WARN] Tunnel ID '${targetTunnelId}' tidak aktif/sehat (status: ${tunnel?.status || 'unknown'}, deleted: ${Boolean(tunnel?.deleted_at)}).`);
+      logs.push(`[Cloudflare] Mencari tunnel aktif (healthy) di akun Cloudflare...`);
+
+      const listRes = await this.request('GET', `https://api.cloudflare.com/client/v4/accounts/${CONFIG.cfAccount}/cfd_tunnel?is_deleted=false`);
+      const healthyTunnel = listRes.data?.result?.find(t => t.status === 'healthy');
+
+      if (healthyTunnel) {
+        logs.push(`[Cloudflare SUCCESS] Menemukan tunnel aktif: '${healthyTunnel.name}' (${healthyTunnel.id}). Menggunakan tunnel ini secara otomatis.`);
+        targetTunnelId = healthyTunnel.id;
+        tunnel = healthyTunnel;
+      } else {
+        logs.push(`[Cloudflare ERROR] Tidak ditemukan tunnel berstatus 'healthy' di Cloudflare. Update DNS dibatalkan untuk mencegah downtime / Error 1033.`);
+        return { success: false, subdomain: sub, simulated: true, logs };
+      }
     }
 
-    const tunnelCname = `${CONFIG.cfTunnelId}.cfargotunnel.com`;
+    const tunnelCname = `${targetTunnelId}.cfargotunnel.com`;
 
-    // 1. Cek keberadaan record DNS saat ini
+    // 2. Cek keberadaan record DNS saat ini
     const dnsQueryUrl = `https://api.cloudflare.com/client/v4/zones/${CONFIG.cfZoneId}/dns_records?type=CNAME&name=${encodeURIComponent(sub)}`;
     const dnsCheck = await this.request('GET', dnsQueryUrl);
     const existing = dnsCheck.data?.result || [];
     const existingDns = existing.find(r => r.name === sub || r.name === repo);
 
-    // 2. Cek aturan Tunnel Ingress saat ini
-    const cfgUrl = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.cfAccount}/cfd_tunnel/${CONFIG.cfTunnelId}/configurations`;
+    // 3. Cek aturan Tunnel Ingress saat ini
+    const cfgUrl = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.cfAccount}/cfd_tunnel/${targetTunnelId}/configurations`;
     const cfgRes = await this.request('GET', cfgUrl);
     const ingressRules = cfgRes.data?.result?.config?.ingress || [];
     const existingIngress = ingressRules.find(i => i.hostname === sub);
